@@ -19,7 +19,19 @@ SlashCmdList.PACKER = function(msg)
     ToggleFrame(PackerFrame)
 end
 
+local defaults = {
+    profile = {
+        groups = {}
+    }
+}
+
 function Packer:OnInitialize()
+    self.db = LibStub("AceDB-3.0"):New("PackerDB", defaults)
+
+    for _, module in ipairs(self.modules) do
+        module:OnInit()
+    end
+
     PackerFrame:SelectTab(1)
 end
 
@@ -35,7 +47,7 @@ function Packer:OnModuleCreated(name, module)
     -- Dev helper
     module.bg = module:CreateTexture(nil, "BACKGROUND")
     module.bg:SetAllPoints()
-    module.bg:SetColorTexture(math.random(), math.random(), math.random(), .6)
+    --module.bg:SetColorTexture(math.random(), math.random(), math.random(), .6)
 
     local tab = PackerFrame:CreateTab()
     tab:SetText(name)
@@ -43,10 +55,23 @@ function Packer:OnModuleCreated(name, module)
 end
 
 function PackerFrame:OnTabSelected(id)
-    print(self.tabs[id].frame)
     self.tabs[id].frame:Show()
 end
 
 function PackerFrame:OnTabDeselected(id)
     self.tabs[id].frame:Hide()
+end
+
+---@param id number
+function Packer:GetGroup(id)
+    return self.db.profile.groups[id]
+end
+
+---@param name string
+function Packer:NewGroup(name)
+    table.insert(self.db.profile.groups, {name=name, items={}})
+end
+
+function Packer:GroupCount()
+    return #(Packer.db.profile.groups)
 end
