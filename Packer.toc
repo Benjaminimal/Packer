@@ -1,0 +1,15 @@
+## Interface: 20503
+## Version: 0.0.1
+## Title: Packer
+## Notes:
+## Author: benjaminimal
+## SavedVariables: PackerDB
+
+embeds.xml
+
+src\db.lua
+
+src\ui.lua
+src\ui.xml
+
+src\main.lua
