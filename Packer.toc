@@ -8,3 +8,7 @@
 embeds.xml
 
 src\main.lua
+
+src\profile.lua
+src\groups.lua
+src\list.lua
