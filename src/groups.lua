@@ -25,16 +25,35 @@ function Groups:OnInit()
         return Packer:GroupCount()
     end
 
+    local GroupMenu = Packer:CreateDropdown("Menu")
+    local function GroupMenu_Initialize(menu)
+        local button = UIDROPDOWNMENU_MENU_VALUE
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = "Delete"
+        info.func = function(info, groupIndex)
+            Packer:DeleteGroup(groupIndex)
+            self:UpdateScrollFrame()
+        end
+        info.arg1 = button.index
+        menu:AddButton(info)
+    end
+    GroupMenu.initialize = GroupMenu_Initialize
+
+    local function ScrollFrameButton_OnClick(scrollFrameButton, pressedButton)
+        if pressedButton == 'LeftButton' then
+            -- TODO: add item to group
+        elseif pressedButton == 'RightButton' then
+            GroupMenu:Toggle(scrollFrameButton, scrollFrameButton)
+        end
+    end
+
     ---@param parent Frame
     local function ScrollFrame_CreateButton(parent)
         ---@type Button
         local Button = CreateFrame("Button", nil, parent)
 
         Button:SetPoint("RIGHT", -5, 0)
-        Button:SetScript("OnClick", onClick)
-        Button:SetScript("OnEnter", onEnter)
-        Button:SetScript("OnLeave", GameTooltip_Hide)
-        Button:SetScript("OnReceiveDrag", dropAction)
+        Button:SetScript("OnClick", ScrollFrameButton_OnClick)
         Button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         Button:SetPushedTextOffset(0, 0)
 
@@ -75,15 +94,15 @@ function Groups:OnInit()
     ---@param button Button
     ---@param index number
     local function ScrollFrame_UpdateButton(button, index)
-        button.group = Packer.db.profile.groups[index]
-        local label = button.group.name
+        button.index = index
+        button.group = Packer:GetGroup(index)
         button:EnableDrawLayer("BACKGROUND")
         button:SetHighlightTexture(nil)
         button.info:SetText("")
         button.icon:SetTexture("")
         button.label:SetFontObject(GameFontNormal)
         button.label:SetPoint("LEFT", 11, 0)
-        button.label:SetText(label)
+        button.label:SetText(button.group.name)
     end
     ScrollFrame.updateButton = ScrollFrame_UpdateButton
 

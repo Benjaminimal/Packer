@@ -21,8 +21,8 @@ end
 
 local defaults = {
     profile = {
-        groups = {}
-    }
+        groups = {},
+    },
 }
 
 function Packer:OnInitialize()
@@ -63,15 +63,22 @@ function PackerFrame:OnTabDeselected(id)
 end
 
 ---@param id number
-function Packer:GetGroup(id)
-    return self.db.profile.groups[id]
+function Packer:GetGroup(index)
+    return self.db.profile.groups[index]
 end
 
 ---@param name string
 function Packer:NewGroup(name)
-    table.insert(self.db.profile.groups, {name=name, items={}})
+    self.db.profile.groups[self:GroupCount() + 1] = {
+        name = name,
+        items = {},
+    }
+end
+
+function Packer:DeleteGroup(index)
+    table.remove(self.db.profile.groups, index)
 end
 
 function Packer:GroupCount()
-    return #(Packer.db.profile.groups)
+    return #(self.db.profile.groups)
 end
