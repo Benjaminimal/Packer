@@ -1,7 +1,9 @@
-local _, Packer = ...
+---@type Packer
+local Packer = select(2, ...)
 
----@type Frame
+---@class Groups : Frame
 local Groups = Packer:NewModule("Groups", CreateFrame("Frame"))
+
 
 function Groups:OnInit()
     self:EnableMouse(true)
@@ -12,120 +14,117 @@ function Groups:OnInit()
     self.hint:SetPoint("CENTER")
     self.hint:SetText("Create a group")
 
-    ---@type ScrollFrame
-    local ScrollFrame = Packer:CreateScrollFrame("Hybrid", self)
-    ScrollFrame:SetPoint("TOPLEFT", self.Inset, "TOPLEFT", 4, -4)
-    ScrollFrame:SetPoint("BOTTOMRIGHT", self.Inset, "BOTTOMRIGHT", -24, 4)
+    self.ScrollFrame = self:CreateScrollFrame()
+    self.GroupMenu = self:CreateGroupMenu()
+    self.AddButton = self:CreateAddButton()
 
-    ScrollFrame:SetButtonHeight(18)
-    ScrollFrame.initialOffsetX = 2
-    ScrollFrame.initialOffsetY = -1
-    ScrollFrame.offsetY = -2
-    ScrollFrame.getNumItems = function()
+    self:Render()
+end
+
+
+function Groups:CreateScrollFrame()
+    local scrollFrame = Packer:CreateScrollFrame("Hybrid", self)
+    scrollFrame:SetPoint("TOPLEFT", self.Inset, "TOPLEFT", 4, -4)
+    scrollFrame:SetPoint("BOTTOMRIGHT", self.Inset, "BOTTOMRIGHT", -24, 4)
+
+    scrollFrame:SetButtonHeight(18)
+    scrollFrame.initialOffsetX = 2
+    scrollFrame.initialOffsetY = -1
+    scrollFrame.offsetY = -2
+    scrollFrame.getNumItems = function()
         return Packer:GroupCount()
     end
 
-    local GroupMenu = Packer:CreateDropdown("Menu")
-    local function GroupMenu_Initialize(menu)
-        local button = UIDROPDOWNMENU_MENU_VALUE
-        local info = UIDropDownMenu_CreateInfo()
-        info.text = "Delete"
-        info.func = function(info, groupIndex)
-            Packer:DeleteGroup(groupIndex)
-            self:UpdateScrollFrame()
-        end
-        info.arg1 = button.index
-        menu:AddButton(info)
-    end
-    GroupMenu.initialize = GroupMenu_Initialize
-
-    local function ScrollFrameButton_OnClick(scrollFrameButton, pressedButton)
+    local function scrollFrameButton_OnClick(scrollFrameButton, pressedButton)
         if pressedButton == 'LeftButton' then
             -- TODO: add item to group
         elseif pressedButton == 'RightButton' then
-            GroupMenu:Toggle(scrollFrameButton, scrollFrameButton)
+            self.GroupMenu:Toggle(scrollFrameButton, scrollFrameButton)
         end
     end
 
-    ---@param parent Frame
-    local function ScrollFrame_CreateButton(parent)
+    scrollFrame.createButton = function(parent)
         ---@type Button
-        local Button = CreateFrame("Button", nil, parent)
+        local button = CreateFrame("Button", nil, parent)
 
-        Button:SetPoint("RIGHT", -5, 0)
-        Button:SetScript("OnClick", ScrollFrameButton_OnClick)
-        Button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        Button:SetPushedTextOffset(0, 0)
+        button:SetPoint("RIGHT", -2, 0)
+        button:SetScript("OnClick", scrollFrameButton_OnClick)
+        button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        button:SetPushedTextOffset(0, 0)
 
-        Button.icon = Button:CreateTexture()
-        Button.icon:SetPoint("LEFT", 3, 0)
-        Button.icon:SetSize(16, 16)
+        button.label = button:CreateFontString()
+        button.label:SetJustifyH("LEFT")
+        button.label:SetFontObject(GameFontNormal)
+        button.label:SetPoint("LEFT", 11, 0)
 
-        Button.info = Button:CreateFontString(nil, nil, "GameFontHighlightSmallRight")
-        Button.info:SetPoint("RIGHT", -3, 0)
-
-        Button.label = Button:CreateFontString()
-        Button.label:SetPoint("RIGHT", Button.info, "LEFT", -4, 0)
-        Button.label:SetJustifyH("LEFT")
-
-        local left = Button:CreateTexture(nil, "BACKGROUND")
+        local left = button:CreateTexture(nil, "BACKGROUND")
         left:SetPoint("LEFT")
         left:SetSize(76, 16)
         left:SetTexture([[Interface\Buttons\CollapsibleHeader]])
         left:SetTexCoord(0.17578125, 0.47265625, 0.29687500, 0.54687500)
 
-        local right = Button:CreateTexture(nil, "BACKGROUND")
+        local right = button:CreateTexture(nil, "BACKGROUND")
         right:SetPoint("RIGHT")
         right:SetSize(76, 16)
         right:SetTexture([[Interface\Buttons\CollapsibleHeader]])
         right:SetTexCoord(0.17578125, 0.47265625, 0.01562500, 0.26562500)
 
-        local middle = Button:CreateTexture(nil, "BACKGROUND")
+        local middle = button:CreateTexture(nil, "BACKGROUND")
         middle:SetPoint("LEFT", left, "RIGHT", -20, 0)
         middle:SetPoint("RIGHT", right, "LEFT", 20, 0)
         middle:SetHeight(16)
         middle:SetTexture([[Interface\Buttons\CollapsibleHeader]])
         middle:SetTexCoord(0.48046875, 0.98046875, 0.01562500, 0.26562500)
 
-        return Button
+        return button
     end
-    ScrollFrame.createButton = ScrollFrame_CreateButton
 
-    ---@param button Button
-    ---@param index number
-    local function ScrollFrame_UpdateButton(button, index)
+    scrollFrame.updateButton = function(button, index)
         button.index = index
         button.group = Packer:GetGroup(index)
         button:EnableDrawLayer("BACKGROUND")
         button:SetHighlightTexture(nil)
-        button.info:SetText("")
-        button.icon:SetTexture("")
-        button.label:SetFontObject(GameFontNormal)
-        button.label:SetPoint("LEFT", 11, 0)
         button.label:SetText(button.group.name)
     end
-    ScrollFrame.updateButton = ScrollFrame_UpdateButton
 
-    ScrollFrame:CreateButtons()
-    ScrollFrame:update()
+    scrollFrame:CreateButtons()
 
-    ---@type Texture
-    ScrollFrame.bg = ScrollFrame:CreateTexture(nil, "BACKGROUND")
-    ScrollFrame.bg:SetAllPoints()
-    ScrollFrame.bg:SetColorTexture(math.random(), math.random(), math.random(), .6)
+    return scrollFrame
+end
 
-    function self:UpdateScrollFrame()
-        ScrollFrame:update()
+
+function Groups:CreateGroupMenu()
+    local groupMenu = Packer:CreateDropdown("Menu")
+    groupMenu.initialize = function(menu)
+        local button = UIDROPDOWNMENU_MENU_VALUE
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = "Delete"
+        info.func = function(info, groupIndex)
+            Packer:DeleteGroup(groupIndex)
+            self:Render()
+        end
+        info.arg1 = button.index
+        menu:AddButton(info)
     end
 
+    return groupMenu
+end
+
+
+function Groups:CreateAddButton()
     ---@type Button
-    local AddButton = Packer:CreateButton(self)
-    AddButton:SetWidth(80)
-    AddButton:SetPoint("TOPLEFT", 16, -32)
-    AddButton:SetText("Add Group")
-    AddButton:SetScript("OnClick", function(addButton, ...)
+    local addButton = Packer:CreateButton(self)
+    addButton:SetWidth(80)
+    addButton:SetPoint("TOPLEFT", 16, -32)
+    addButton:SetText("Add Group")
+    addButton:SetScript("OnClick", function(...)
         local groupNum = Packer:GroupCount() + 1
         Packer:NewGroup("Group "..groupNum)
-        self:UpdateScrollFrame()
+        self:Render()
     end)
+end
+
+
+function Groups:Render()
+    self.ScrollFrame:update()
 end

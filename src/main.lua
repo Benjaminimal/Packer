@@ -1,5 +1,6 @@
 local Libra = LibStub("Libra")
 
+---@class Packer
 local Packer = Libra:NewAddon(...)
 _G.Packer = Packer
 Libra:EmbedWidgets(Packer)
@@ -81,4 +82,17 @@ end
 
 function Packer:GroupCount()
     return #(self.db.profile.groups)
+end
+
+--------------------------------------------------------------------------------
+--- Dev tools
+--------------------------------------------------------------------------------
+
+function Packer:DebugBackground(frame)
+    ---@type Texture
+   local background = frame:CreateTexture("BACKGROUND")
+   background:SetAllPoints()
+   background:SetColorTexture(math.random(), math.random(), math.random(), .6)
+
+    return background
 end
