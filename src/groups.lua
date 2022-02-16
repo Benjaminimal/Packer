@@ -6,14 +6,6 @@ local Groups = Packer:NewModule("Groups", CreateFrame("Frame"))
 
 
 function Groups:OnInit()
-    self:EnableMouse(true)
-    self:SetSize(500, 500)
-
-    ---@type FontString
-    self.hint = self:CreateFontString(nil, nil, "GameFontNormalMed3")
-    self.hint:SetPoint("CENTER")
-    self.hint:SetText("Create a group")
-
     self.ScrollFrame = self:CreateScrollFrame()
     self.GroupMenu = self:CreateGroupMenu()
     self.AddButton = self:CreateAddButton()
@@ -37,54 +29,78 @@ function Groups:CreateScrollFrame()
 
     local function scrollFrameButton_OnClick(scrollFrameButton, pressedButton)
         if pressedButton == 'LeftButton' then
-            -- TODO: add item to group
+            local parent = scrollFrameButton:GetParent()
+            local height = scrollFrameButton:GetHeight() + (not parent.body:IsShown() and 40 or 0)
+            parent:SetHeight(height)
+            parent.body:SetShown(not parent.body:IsShown())
         elseif pressedButton == 'RightButton' then
             self.GroupMenu:Toggle(scrollFrameButton, scrollFrameButton)
         end
     end
 
     scrollFrame.createButton = function(parent)
+        ---@type Frame
+        local groupContainer = CreateFrame("Button", nil, parent)
+        groupContainer:SetPoint("RIGHT", -2, 0)
+
         ---@type Button
-        local button = CreateFrame("Button", nil, parent)
+        local header = CreateFrame("Button", nil, groupContainer)
 
-        button:SetPoint("RIGHT", -2, 0)
-        button:SetScript("OnClick", scrollFrameButton_OnClick)
-        button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        button:SetPushedTextOffset(0, 0)
+        header:SetHeight(18)
+        header:SetPoint("TOPLEFT")
+        header:SetPoint("RIGHT")
+        header:SetScript("OnClick", scrollFrameButton_OnClick)
+        header:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
-        button.label = button:CreateFontString()
-        button.label:SetJustifyH("LEFT")
-        button.label:SetFontObject(GameFontNormal)
-        button.label:SetPoint("LEFT", 11, 0)
+        header.label = header:CreateFontString()
+        header.label:SetJustifyH("LEFT")
+        header.label:SetFontObject(GameFontNormal)
+        header.label:SetPoint("LEFT", 11, 0)
 
-        local left = button:CreateTexture(nil, "BACKGROUND")
+        local left = header:CreateTexture(nil, "BACKGROUND")
         left:SetPoint("LEFT")
         left:SetSize(76, 16)
         left:SetTexture([[Interface\Buttons\CollapsibleHeader]])
         left:SetTexCoord(0.17578125, 0.47265625, 0.29687500, 0.54687500)
 
-        local right = button:CreateTexture(nil, "BACKGROUND")
+        local right = header:CreateTexture(nil, "BACKGROUND")
         right:SetPoint("RIGHT")
         right:SetSize(76, 16)
         right:SetTexture([[Interface\Buttons\CollapsibleHeader]])
         right:SetTexCoord(0.17578125, 0.47265625, 0.01562500, 0.26562500)
 
-        local middle = button:CreateTexture(nil, "BACKGROUND")
+        local middle = header:CreateTexture(nil, "BACKGROUND")
         middle:SetPoint("LEFT", left, "RIGHT", -20, 0)
         middle:SetPoint("RIGHT", right, "LEFT", 20, 0)
         middle:SetHeight(16)
         middle:SetTexture([[Interface\Buttons\CollapsibleHeader]])
         middle:SetTexCoord(0.48046875, 0.98046875, 0.01562500, 0.26562500)
 
-        return button
+        ---@type Frame
+        local body = CreateFrame("Frame", nil, groupContainer)
+        body:SetPoint("TOPLEFT", header, "BOTTOMLEFT")
+        body:SetPoint("BOTTOM")
+        -- TODO: set dynamic height
+        body:SetHeight(40)
+        body:Hide()
+
+        body.bg = Packer:DebugBackground(body)
+
+        ---@type FontString
+        body.hint = body:CreateFontString(nil, nil, "GameFontNormalMed3")
+        body.hint:SetText("Drag an item here to add it")
+        body.hint:SetPoint("CENTER")
+
+        groupContainer.header = header
+        groupContainer.body = body
+
+        return groupContainer
     end
 
-    scrollFrame.updateButton = function(button, index)
-        button.index = index
-        button.group = Packer:GetGroup(index)
-        button:EnableDrawLayer("BACKGROUND")
-        button:SetHighlightTexture(nil)
-        button.label:SetText(button.group.name)
+    scrollFrame.updateButton = function(groupContainer, index)
+        groupContainer.index = index
+        groupContainer.group = Packer:GetGroup(index)
+        groupContainer.header.label:SetText(groupContainer.group.name)
     end
 
     scrollFrame:CreateButtons()
