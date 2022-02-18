@@ -4,11 +4,33 @@ local Packer = select(2, ...)
 ---@class Groups : Frame
 local Groups = Packer:NewModule("Groups", CreateFrame("Frame"))
 
+---@class GroupContainer : Frame
+local GroupContainer
 
+---@class GroupHeader : Button
+local GroupHeader
+
+---@class GroupBody : Frame
+local GroupBody
+
+
+-- TODO: move this somewhere else
+local function SetSuperClass(subClass, superObject)
+    subClass.__index = subClass
+    local superClass = getmetatable(superObject)
+    subClass.__super = superClass.__index
+    setmetatable(subClass, superClass)
+    setmetatable(superObject, subClass)
+end
+
+
+--------------------------------------------------------------------------------
+--- Groups
+--------------------------------------------------------------------------------
 function Groups:OnInit()
-    self.ScrollFrame = self:CreateScrollFrame()
-    self.GroupMenu = self:CreateGroupMenu()
-    self.AddButton = self:CreateAddButton()
+    self.scrollFrame = self:CreateScrollFrame()
+    self.groupMenu = self:CreateGroupMenu()
+    self.addButton = self:CreateAddButton()
 
     self:Render()
 end
@@ -27,80 +49,12 @@ function Groups:CreateScrollFrame()
         return Packer:GroupCount()
     end
 
-    local function scrollFrameButton_OnClick(scrollFrameButton, pressedButton)
-        if pressedButton == 'LeftButton' then
-            local parent = scrollFrameButton:GetParent()
-            local height = scrollFrameButton:GetHeight() + (not parent.body:IsShown() and 40 or 0)
-            parent:SetHeight(height)
-            parent.body:SetShown(not parent.body:IsShown())
-        elseif pressedButton == 'RightButton' then
-            self.GroupMenu:Toggle(scrollFrameButton, scrollFrameButton)
-        end
-    end
-
     scrollFrame.createButton = function(parent)
-        ---@type Frame
-        local groupContainer = CreateFrame("Button", nil, parent)
-        groupContainer:SetPoint("RIGHT", -2, 0)
-
-        ---@type Button
-        local header = CreateFrame("Button", nil, groupContainer)
-
-        header:SetHeight(18)
-        header:SetPoint("TOPLEFT")
-        header:SetPoint("RIGHT")
-        header:SetScript("OnClick", scrollFrameButton_OnClick)
-        header:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-
-        header.label = header:CreateFontString()
-        header.label:SetJustifyH("LEFT")
-        header.label:SetFontObject(GameFontNormal)
-        header.label:SetPoint("LEFT", 11, 0)
-
-        local left = header:CreateTexture(nil, "BACKGROUND")
-        left:SetPoint("LEFT")
-        left:SetSize(76, 16)
-        left:SetTexture([[Interface\Buttons\CollapsibleHeader]])
-        left:SetTexCoord(0.17578125, 0.47265625, 0.29687500, 0.54687500)
-
-        local right = header:CreateTexture(nil, "BACKGROUND")
-        right:SetPoint("RIGHT")
-        right:SetSize(76, 16)
-        right:SetTexture([[Interface\Buttons\CollapsibleHeader]])
-        right:SetTexCoord(0.17578125, 0.47265625, 0.01562500, 0.26562500)
-
-        local middle = header:CreateTexture(nil, "BACKGROUND")
-        middle:SetPoint("LEFT", left, "RIGHT", -20, 0)
-        middle:SetPoint("RIGHT", right, "LEFT", 20, 0)
-        middle:SetHeight(16)
-        middle:SetTexture([[Interface\Buttons\CollapsibleHeader]])
-        middle:SetTexCoord(0.48046875, 0.98046875, 0.01562500, 0.26562500)
-
-        ---@type Frame
-        local body = CreateFrame("Frame", nil, groupContainer)
-        body:SetPoint("TOPLEFT", header, "BOTTOMLEFT")
-        body:SetPoint("BOTTOM")
-        -- TODO: set dynamic height
-        body:SetHeight(40)
-        body:Hide()
-
-        body.bg = Packer:DebugBackground(body)
-
-        ---@type FontString
-        body.hint = body:CreateFontString(nil, nil, "GameFontNormalMed3")
-        body.hint:SetText("Drag an item here to add it")
-        body.hint:SetPoint("CENTER")
-
-        groupContainer.header = header
-        groupContainer.body = body
-
-        return groupContainer
+        return GroupContainer:New(parent)
     end
 
     scrollFrame.updateButton = function(groupContainer, index)
-        groupContainer.index = index
-        groupContainer.group = Packer:GetGroup(index)
-        groupContainer.header.label:SetText(groupContainer.group.name)
+        groupContainer:SetGroup(index)
     end
 
     scrollFrame:CreateButtons()
@@ -142,5 +96,114 @@ end
 
 
 function Groups:Render()
-    self.ScrollFrame:update()
+    self.scrollFrame:update()
+end
+
+
+--------------------------------------------------------------------------------
+--- GroupContainer
+--------------------------------------------------------------------------------
+GroupContainer = {}
+function GroupContainer:New(parent)
+    ---@type GroupContainer
+    local obj = CreateFrame("Frame", nil, parent)
+    SetSuperClass(self, obj)
+
+    obj:SetPoint("RIGHT", -2, 0)
+    obj.header = GroupHeader:New(obj)
+    obj.body = GroupBody:New(obj)
+
+    return obj
+end
+
+function GroupContainer:SetGroup(index)
+    self.index = index
+    self.group = Packer:GetGroup(index)
+    self.header:SetName(self.group.name)
+
+    -- TODO: fix height?
+end
+
+
+--------------------------------------------------------------------------------
+--- GroupHeader
+--------------------------------------------------------------------------------
+GroupHeader = {}
+function GroupHeader:New(parent)
+    ---@type GroupHeader
+    local obj = CreateFrame("Button", nil, parent)
+    SetSuperClass(self, obj)
+
+    obj:SetHeight(18)
+    obj:SetPoint("TOPLEFT")
+    obj:SetPoint("RIGHT")
+    obj:SetScript("OnClick", obj.OnClick)
+    obj:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+
+    obj.label = obj:CreateFontString()
+    obj.label:SetJustifyH("LEFT")
+    obj.label:SetFontObject(GameFontNormal)
+    obj.label:SetPoint("LEFT", 11, 0)
+
+    local left = obj:CreateTexture(nil, "BACKGROUND")
+    left:SetPoint("LEFT")
+    left:SetSize(76, 16)
+    left:SetTexture([[Interface\Buttons\CollapsibleHeader]])
+    left:SetTexCoord(0.17578125, 0.47265625, 0.29687500, 0.54687500)
+
+    local right = obj:CreateTexture(nil, "BACKGROUND")
+    right:SetPoint("RIGHT")
+    right:SetSize(76, 16)
+    right:SetTexture([[Interface\Buttons\CollapsibleHeader]])
+    right:SetTexCoord(0.17578125, 0.47265625, 0.01562500, 0.26562500)
+
+    local middle = obj:CreateTexture(nil, "BACKGROUND")
+    middle:SetPoint("LEFT", left, "RIGHT", -20, 0)
+    middle:SetPoint("RIGHT", right, "LEFT", 20, 0)
+    middle:SetHeight(16)
+    middle:SetTexture([[Interface\Buttons\CollapsibleHeader]])
+    middle:SetTexCoord(0.48046875, 0.98046875, 0.01562500, 0.26562500)
+
+    return obj
+end
+
+function GroupHeader:SetName(name)
+    self.label:SetText(name)
+end
+
+function GroupHeader:OnClick(mouseButton)
+    if mouseButton == 'LeftButton' then
+        local parent = self:GetParent()
+        local height = self:GetHeight() + (not parent.body:IsShown() and 40 or 0)
+        parent:SetHeight(height)
+        parent.body:SetShown(not parent.body:IsShown())
+    elseif mouseButton == 'RightButton' then
+        Packer.groupMenu:Toggle(self, self)
+    end
+end
+
+
+--------------------------------------------------------------------------------
+--- GroupBody
+--------------------------------------------------------------------------------
+GroupBody = {}
+function GroupBody:New(parent)
+    ---@type GroupBody
+    local obj = CreateFrame("Frame", nil, parent)
+    SetSuperClass(self, obj)
+
+    obj:SetPoint("TOPLEFT", obj:GetParent().header, "BOTTOMLEFT")
+    obj:SetPoint("BOTTOM")
+    -- TODO: set dynamic height
+    obj:SetHeight(40)
+    obj:Hide()
+
+    obj.bg = Packer:DebugBackground(obj)
+
+    ---@type FontString
+    obj.hint = obj:CreateFontString(nil, nil, "GameFontNormalMed3")
+    obj.hint:SetText("Drag an item here to add it")
+    obj.hint:SetPoint("CENTER")
+
+    return obj
 end
