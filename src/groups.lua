@@ -315,6 +315,19 @@ function GroupBodyItem:New(parent)
     obj:SetPoint("RIGHT")
     obj:SetHeight(self.initialHeight)
 
+    ---@type Texture
+    obj.highlightBackground = obj:CreateTexture("BACKGROUND")
+    obj.highlightBackground:SetTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]])
+    obj.highlightBackground:SetAllPoints()
+    obj.highlightBackground:Hide()
+
+    obj:SetScript("OnEnter", function(target, motion)
+        target.highlightBackground:Show()
+    end)
+    obj:SetScript("OnLeave", function(target, motion)
+        target.highlightBackground:Hide()
+    end)
+
     obj.label = obj:CreateFontString(nil, nil, "GameFontNormal")
     obj.label:SetPoint("LEFT", self.inset, 0)
 
