@@ -155,7 +155,7 @@ function GroupHeader:New(parent)
 
     obj.label = obj:CreateFontString()
     obj.label:SetJustifyH("LEFT")
-    obj.label:SetFontObject(GameFontNormal)
+    obj.label:SetFontObject("GameFontNormal")
     obj.label:SetPoint("LEFT", 6, 0)
 
     local left = obj:CreateTexture(nil, "BACKGROUND")
@@ -306,7 +306,7 @@ end
 --------------------------------------------------------------------------------
 --- GroupBodyItem
 --------------------------------------------------------------------------------
-GroupBodyItem = {initialHeight = 14, inset = 2}
+GroupBodyItem = {initialHeight = 16, inset = 2}
 function GroupBodyItem:New(parent)
     ---@type GroupBodyItem
     local obj = CreateFrame("Frame", nil, parent)
@@ -318,8 +318,33 @@ function GroupBodyItem:New(parent)
     obj.label = obj:CreateFontString(nil, nil, "GameFontNormal")
     obj.label:SetPoint("LEFT", self.inset, 0)
 
-    obj.count = obj:CreateFontString(nil, nil, "GameFontNormal")
-    obj.count:SetPoint("RIGHT", -self.inset, 0)
+    ---@type EditBox
+    obj.countEdit = CreateFrame("EditBox", nil, obj, "InputBoxTemplate")
+    obj.countEdit:SetFontObject("GameFontNormal")
+    obj.countEdit:SetPoint("RIGHT")
+    obj.countEdit:SetHeight(self.initialHeight - self.inset)
+    obj.countEdit:SetWidth(40)
+    obj.countEdit:SetMaxLetters(4)
+    obj.countEdit:SetAutoFocus(false)
+    obj.countEdit:SetJustifyH("RIGHT")
+    obj.countEdit:SetTextInsets(0, 5, 0, 0)
+
+    obj.countEdit.Left:Hide()
+    obj.countEdit.Middle:Hide()
+    obj.countEdit.Right:Hide()
+
+    obj.countEdit:SetScript("OnEditFocusGained", function(target)
+        obj:CountOnEditFocusGained(target)
+    end)
+    obj.countEdit:SetScript("OnEditFocusLost", function(target)
+        obj:CountOnEditFocusLost(target)
+    end)
+    obj.countEdit:SetScript("OnEnterPressed", function(target)
+        obj:CountOnEnterPressed(target)
+    end)
+    obj.countEdit:SetScript("OnEscapePressed", function(target)
+        obj:CountOnEscapePressed(target)
+    end)
 
     obj:SetScript("OnMouseUp", self.OnClick)
     obj:SetScript("OnReceiveDrag", parent.OnClick)
@@ -343,6 +368,35 @@ function GroupBodyItem:OnClick(mouseButton)
     end
 end
 
+function GroupBodyItem:CountOnEditFocusGained(countEdit)
+    countEdit.Left:Show()
+    countEdit.Middle:Show()
+    countEdit.Right:Show()
+    countEdit:HighlightText()
+end
+
+function GroupBodyItem:CountOnEditFocusLost(countEdit)
+    countEdit.Left:Hide()
+    countEdit.Middle:Hide()
+    countEdit.Right:Hide()
+    countEdit:HighlightText(0, 0)
+end
+
+function GroupBodyItem:CountOnEnterPressed(countEdit)
+    local text = countEdit:GetText()
+    local count = self.count
+    if not (text == "" or text:find("%D")) then
+        count = tonumber(text)
+    end
+    self:SetCount(count)
+    countEdit:ClearFocus()
+end
+
+function GroupBodyItem:CountOnEscapePressed(countEdit)
+    self:SetCount(self.count)
+    countEdit:ClearFocus()
+end
+
 function GroupBodyItem:GetContextMenuActions()
     local info = UIDropDownMenu_CreateInfo()
     info.text = "Delete Item"
@@ -357,9 +411,17 @@ function GroupBodyItem:GetContextMenuActions()
     return {info}
 end
 
+function GroupBodyItem:SetCount(count)
+    if Packer:SetItem(self:GetGroup(), self.itemId, count) then
+        self.count = count
+    end
+    self.countEdit:SetText(self.count)
+end
+
 function GroupBodyItem:SetItem(itemId, count)
     self.itemId = itemId
+    self.count = count
 
     self.label:SetText(itemId)
-    self.count:SetText(count)
+    self.countEdit:SetText(count)
 end

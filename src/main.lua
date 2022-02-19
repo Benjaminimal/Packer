@@ -102,6 +102,14 @@ function Packer:AddItem(group, itemId, count)
     return added
 end
 
+function Packer:SetItem(group, itemId, count)
+    local set = count > 0 and group.items[itemId] ~= nil
+    if set then
+        group.items[itemId] = count
+    end
+    return set
+end
+
 function Packer:DeleteItem(group, itemId)
     local deleted = group.items[itemId] ~= nil
     if deleted then
