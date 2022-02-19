@@ -63,6 +63,10 @@ function PackerFrame:OnTabDeselected(id)
     self.tabs[id].frame:Hide()
 end
 
+--------------------------------------------------------------------------------
+--- Persistence
+--------------------------------------------------------------------------------
+
 ---@param id number
 function Packer:GetGroup(index)
     return self.db.profile.groups[index]
@@ -102,11 +106,12 @@ end
 --- Classes
 --------------------------------------------------------------------------------
 
-function Packer:NewClass(obj)
-    local class = obj or {}
-    setmetatable(obj, class)
-    class.__index = class
-    return class
+function Packer:SetSuperClass(subClass, superObject)
+    subClass.__index = subClass
+    local superClass = getmetatable(superObject)
+    subClass.__super = superClass.__index
+    setmetatable(subClass, superClass)
+    setmetatable(superObject, subClass)
 end
 
 --------------------------------------------------------------------------------

@@ -16,15 +16,6 @@ local GroupBody
 ---@class GroupBodyItem : Frame
 local GroupBodyItem
 
--- TODO: move this somewhere else
-local function SetSuperClass(subClass, superObject)
-    subClass.__index = subClass
-    local superClass = getmetatable(superObject)
-    subClass.__super = superClass.__index
-    setmetatable(subClass, superClass)
-    setmetatable(superObject, subClass)
-end
-
 
 --------------------------------------------------------------------------------
 --- Groups
@@ -110,7 +101,7 @@ GroupContainer = {}
 function GroupContainer:New(parent)
     ---@type GroupContainer
     local obj = CreateFrame("Frame", nil, parent)
-    SetSuperClass(self, obj)
+    Packer:SetSuperClass(self, obj)
 
     obj:SetPoint("RIGHT", -2, 0)
     obj.header = GroupHeader:New(obj)
@@ -159,7 +150,7 @@ GroupHeader = {}
 function GroupHeader:New(parent)
     ---@type GroupHeader
     local obj = CreateFrame("Button", nil, parent)
-    SetSuperClass(self, obj)
+    Packer:SetSuperClass(self, obj)
 
     obj:SetHeight(18)
     obj:SetPoint("TOPLEFT")
@@ -219,7 +210,7 @@ GroupBody = {initialHeight = 40, inset = 4}
 function GroupBody:New(parent)
     ---@type GroupBody
     local obj = CreateFrame("Frame", nil, parent)
-    SetSuperClass(self, obj)
+    Packer:SetSuperClass(self, obj)
 
     -- TODO: replace ugly reference to parent.header
     obj:SetPoint("TOPLEFT", parent.header, "BOTTOMLEFT", self.inset, 0)
@@ -310,7 +301,7 @@ GroupBodyItem = {initialHeight = 14, inset = 2}
 function GroupBodyItem:New(parent)
     ---@type GroupBodyEntry
     local obj = CreateFrame("Frame", nil, parent)
-    SetSuperClass(self, obj)
+    Packer:SetSuperClass(self, obj)
 
     obj:SetPoint("RIGHT")
     obj:SetHeight(self.initialHeight)
