@@ -59,16 +59,10 @@ end
 function Groups:CreateContextMenu()
     local contextMenu = Packer:CreateDropdown("Menu")
     contextMenu.initialize = function(menu)
-        local button = UIDROPDOWNMENU_MENU_VALUE
-        local info = UIDropDownMenu_CreateInfo()
-        info.text = "Delete"
-        info.func = function(info, groupIndex)
-            Packer:DeleteGroup(groupIndex)
-            self:Render()
+        local target = UIDROPDOWNMENU_MENU_VALUE
+        for _, info in pairs(target:GetContextMenuActions()) do
+            menu:AddButton(info)
         end
-        info.arg1 = button.index
-        info.notCheckable = true
-        menu:AddButton(info)
     end
 
     return contextMenu
@@ -125,6 +119,7 @@ function GroupContainer:Toggle()
 end
 
 function GroupContainer:Update()
+    self.header:SetName(self.group.name)
     self.body:SetGroup(self.group)
     self:UpdateHeight()
 end
@@ -185,6 +180,10 @@ function GroupHeader:New(parent)
     return obj
 end
 
+function GroupHeader:GetGroupIndex()
+    return self:GetParent().index
+end
+
 function GroupHeader:SetName(name)
     self.label:SetText(name)
 end
@@ -201,6 +200,18 @@ function GroupHeader:OnClick(mouseButton)
     end
 end
 
+function GroupHeader:GetContextMenuActions()
+    local info = UIDropDownMenu_CreateInfo()
+    info.text = "Delete Group"
+    info.arg1 = self:GetGroupIndex()
+    info.func = function(info, groupIndex)
+        Packer:DeleteGroup(groupIndex)
+        Groups:Render()
+    end
+    info.notCheckable = true
+    return {info}
+end
+
 
 --------------------------------------------------------------------------------
 --- GroupBody
@@ -212,15 +223,14 @@ function GroupBody:New(parent)
     local obj = CreateFrame("Frame", nil, parent)
     Packer:SetSuperClass(self, obj)
 
-    -- TODO: replace ugly reference to parent.header
     obj:SetPoint("TOPLEFT", parent.header, "BOTTOMLEFT", self.inset, 0)
     obj:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -self.inset, 0)
     obj:SetHeight(self.initialHeight)
     obj:Hide()
 
     obj:EnableMouse(true)
-    obj:SetScript("OnMouseUp", GroupBody.OnClick)
-    obj:SetScript("OnReceiveDrag", GroupBody.OnClick)
+    obj:SetScript("OnMouseUp", self.OnClick)
+    obj:SetScript("OnReceiveDrag", self.OnClick)
 
     ---@type FontString
     obj.hint = obj:CreateFontString(nil, nil, "GameFontNormalMed3")
@@ -261,12 +271,11 @@ function GroupBody:SetGroup(group)
 
         i = i + 1
     end
-    -- TODO: enable this once we can delete items from groups. maybe replace both loops with iterators?
-    --for j = itemCount + 1, #self.items, 1 do
-    --    if self.items[j] then
-    --        self.items[j]:Hide()
-    --    end
-    --end
+    for j = itemCount + 1, #self.items, 1 do
+        if self.items[j] then
+            self.items[j]:Hide()
+        end
+    end
 end
 
 function GroupBody:Update()
@@ -295,11 +304,11 @@ end
 
 
 --------------------------------------------------------------------------------
---- GroupBodyEntry
+--- GroupBodyItem
 --------------------------------------------------------------------------------
 GroupBodyItem = {initialHeight = 14, inset = 2}
 function GroupBodyItem:New(parent)
-    ---@type GroupBodyEntry
+    ---@type GroupBodyItem
     local obj = CreateFrame("Frame", nil, parent)
     Packer:SetSuperClass(self, obj)
 
@@ -312,10 +321,45 @@ function GroupBodyItem:New(parent)
     obj.count = obj:CreateFontString(nil, nil, "GameFontNormal")
     obj.count:SetPoint("RIGHT", -self.inset, 0)
 
+    obj:SetScript("OnMouseUp", self.OnClick)
+    obj:SetScript("OnReceiveDrag", parent.OnClick)
+
     return obj
 end
 
+function GroupBodyItem:GetGroup()
+    return self:GetParent():GetGroup()
+end
+
+function GroupBodyItem:Update()
+    self:GetParent():Update()
+end
+
+function GroupBodyItem:OnClick(mouseButton)
+    if mouseButton == 'RightButton' then
+        Groups.contextMenu:Toggle(self, self)
+    else
+        self:GetParent():OnClick(mouseButton)
+    end
+end
+
+function GroupBodyItem:GetContextMenuActions()
+    local info = UIDropDownMenu_CreateInfo()
+    info.text = "Delete Item"
+    info.arg1 = self:GetGroup()
+    info.arg2 = self.itemId
+    info.func = function(info, group, itemId)
+        if Packer:DeleteItem(group, itemId) then
+            self:Update()
+        end
+    end
+    info.notCheckable = true
+    return {info}
+end
+
 function GroupBodyItem:SetItem(itemId, count)
+    self.itemId = itemId
+
     self.label:SetText(itemId)
     self.count:SetText(count)
 end
