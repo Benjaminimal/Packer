@@ -72,6 +72,7 @@ end
 function Packer:NewGroup(name)
     self.db.profile.groups[self:GroupCount() + 1] = {
         name = name,
+        itemCount = 0,
         items = {},
     }
 end
@@ -82,6 +83,19 @@ end
 
 function Packer:GroupCount()
     return #(self.db.profile.groups)
+end
+
+function Packer:ItemCount(group)
+    return group.itemCount
+end
+
+function Packer:AddItem(group, itemId, count)
+    local added = group.items[itemId] == nil
+    if added then
+        group.items[itemId] = count
+        group.itemCount = group.itemCount + 1
+    end
+    return added
 end
 
 --------------------------------------------------------------------------------

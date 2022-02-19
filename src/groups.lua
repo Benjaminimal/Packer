@@ -13,6 +13,8 @@ local GroupHeader
 ---@class GroupBody : Frame
 local GroupBody
 
+---@class GroupBodyItem : Frame
+local GroupBodyItem
 
 -- TODO: move this somewhere else
 local function SetSuperClass(subClass, superObject)
@@ -29,7 +31,7 @@ end
 --------------------------------------------------------------------------------
 function Groups:OnInit()
     self.scrollFrame = self:CreateScrollFrame()
-    self.groupMenu = self:CreateGroupMenu()
+    self.contextMenu = self:CreateContextMenu()
     self.addButton = self:CreateAddButton()
 
     self:Render()
@@ -63,9 +65,9 @@ function Groups:CreateScrollFrame()
 end
 
 
-function Groups:CreateGroupMenu()
-    local groupMenu = Packer:CreateDropdown("Menu")
-    groupMenu.initialize = function(menu)
+function Groups:CreateContextMenu()
+    local contextMenu = Packer:CreateDropdown("Menu")
+    contextMenu.initialize = function(menu)
         local button = UIDROPDOWNMENU_MENU_VALUE
         local info = UIDropDownMenu_CreateInfo()
         info.text = "Delete"
@@ -74,10 +76,11 @@ function Groups:CreateGroupMenu()
             self:Render()
         end
         info.arg1 = button.index
+        info.notCheckable = true
         menu:AddButton(info)
     end
 
-    return groupMenu
+    return contextMenu
 end
 
 
@@ -121,7 +124,31 @@ function GroupContainer:SetGroup(index)
     self.group = Packer:GetGroup(index)
     self.header:SetName(self.group.name)
 
-    -- TODO: fix height?
+    self.body:SetGroup(self.group)
+    self:UpdateHeight()
+end
+
+function GroupContainer:Toggle()
+    self.body:SetShown(not self.body:IsShown())
+    self:Update()
+end
+
+function GroupContainer:Update()
+    self.body:SetGroup(self.group)
+    self:UpdateHeight()
+end
+
+function GroupContainer:UpdateHeight()
+    local height = self.header:GetHeight()
+    if self.body:IsShown() then
+        local itemCount = Packer:ItemCount(self.group)
+        if itemCount == 0 then
+            height = height + 40
+        else
+            height = height + self.body:GetHeight()
+        end
+    end
+    self:SetHeight(height)
 end
 
 
@@ -143,7 +170,7 @@ function GroupHeader:New(parent)
     obj.label = obj:CreateFontString()
     obj.label:SetJustifyH("LEFT")
     obj.label:SetFontObject(GameFontNormal)
-    obj.label:SetPoint("LEFT", 11, 0)
+    obj.label:SetPoint("LEFT", 6, 0)
 
     local left = obj:CreateTexture(nil, "BACKGROUND")
     left:SetPoint("LEFT")
@@ -171,14 +198,15 @@ function GroupHeader:SetName(name)
     self.label:SetText(name)
 end
 
+function GroupHeader:Toggle()
+    self:GetParent():Toggle()
+end
+
 function GroupHeader:OnClick(mouseButton)
     if mouseButton == 'LeftButton' then
-        local parent = self:GetParent()
-        local height = self:GetHeight() + (not parent.body:IsShown() and 40 or 0)
-        parent:SetHeight(height)
-        parent.body:SetShown(not parent.body:IsShown())
+        self:Toggle()
     elseif mouseButton == 'RightButton' then
-        Packer.groupMenu:Toggle(self, self)
+        Groups.contextMenu:Toggle(self, self)
     end
 end
 
@@ -186,19 +214,22 @@ end
 --------------------------------------------------------------------------------
 --- GroupBody
 --------------------------------------------------------------------------------
-GroupBody = {}
+GroupBody = {initialHeight = 40, inset = 4}
+-- TODO: add border to indicate area where items can be dropped
 function GroupBody:New(parent)
     ---@type GroupBody
     local obj = CreateFrame("Frame", nil, parent)
     SetSuperClass(self, obj)
 
-    obj:SetPoint("TOPLEFT", obj:GetParent().header, "BOTTOMLEFT")
-    obj:SetPoint("BOTTOM")
-    -- TODO: set dynamic height
-    obj:SetHeight(40)
+    -- TODO: replace ugly reference to parent.header
+    obj:SetPoint("TOPLEFT", parent.header, "BOTTOMLEFT", self.inset, 0)
+    obj:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -self.inset, 0)
+    obj:SetHeight(self.initialHeight)
     obj:Hide()
 
-    obj.bg = Packer:DebugBackground(obj)
+    obj:EnableMouse(true)
+    obj:SetScript("OnMouseUp", GroupBody.OnClick)
+    obj:SetScript("OnReceiveDrag", GroupBody.OnClick)
 
     ---@type FontString
     obj.hint = obj:CreateFontString(nil, nil, "GameFontNormalMed3")
@@ -206,4 +237,94 @@ function GroupBody:New(parent)
     obj.hint:SetPoint("CENTER")
 
     return obj
+end
+
+function GroupBody:GetGroup()
+    return self:GetParent().group
+end
+
+function GroupBody:SetGroup(group)
+    local itemCount = Packer:ItemCount(group)
+    if itemCount > 0 then
+        self.hint:Hide()
+    else
+        self.hint:Show()
+    end
+
+    self.items = self.items or {}
+    local i = 1
+    for itemId, count in pairs(group.items) do
+        local item = self.items[i]
+
+        if item == nil then
+            item = GroupBodyItem:New(self)
+            if i == 1 then
+                item:SetPoint("TOPLEFT")
+            else
+                item:SetPoint("TOPLEFT", self.items[i - 1], "BOTTOMLEFT")
+            end
+            self.items[i] = item
+        end
+        item:SetItem(itemId, count)
+        item:Show()
+
+        i = i + 1
+    end
+    -- TODO: enable this once we can delete items from groups. maybe replace both loops with iterators?
+    --for j = itemCount + 1, #self.items, 1 do
+    --    if self.items[j] then
+    --        self.items[j]:Hide()
+    --    end
+    --end
+end
+
+function GroupBody:Update()
+    self:GetParent():Update()
+end
+
+function GroupBody:OnClick(mouseButton)
+    if mouseButton == nil or mouseButton == 'LeftButton' then
+        local cursorType, itemId, itemLink   = GetCursorInfo()
+        if cursorType == "item" then
+            if Packer:AddItem(self:GetGroup(), itemId, 1) then
+                ClearCursor()
+                self:Update()
+            end
+        end
+    end
+end
+
+function GroupBody:GetHeight()
+    local height = 0
+    for i = 1, Packer:ItemCount(self:GetGroup()), 1 do
+        height = height + self.items[i]:GetHeight()
+    end
+    return height
+end
+
+
+--------------------------------------------------------------------------------
+--- GroupBodyEntry
+--------------------------------------------------------------------------------
+GroupBodyItem = {initialHeight = 14, inset = 2}
+function GroupBodyItem:New(parent)
+    ---@type GroupBodyEntry
+    local obj = CreateFrame("Frame", nil, parent)
+    SetSuperClass(self, obj)
+
+    obj:SetPoint("RIGHT")
+    obj:SetHeight(self.initialHeight)
+
+    obj.label = obj:CreateFontString(nil, nil, "GameFontNormal")
+    obj.label:SetPoint("LEFT", self.inset, 0)
+
+    obj.count = obj:CreateFontString(nil, nil, "GameFontNormal")
+    obj.count:SetPoint("RIGHT", -self.inset, 0)
+
+    return obj
+end
+
+function GroupBodyItem:SetItem(itemId, count)
+    self.label:SetText(itemId)
+    self.count:SetText(count)
 end
